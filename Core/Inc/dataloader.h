@@ -12,6 +12,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "fatfs.h"
+#include "feature_extraction.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum
@@ -43,9 +44,10 @@ typedef struct
 
 
 /* Exported functions ------------------------------------------------------- */
-void Error_Handler(void);
-
 void ReadWavFile(void);
+void Preprocessing_Init(void);
+void AudioPreprocessing_Run(int16_t *pInSignal, float32_t *pOut, uint32_t signal_len);
+void PowerTodB(float32_t *pSpectrogram);
 
 
 #endif /* INC_DATALOADER_H_ */

@@ -102,7 +102,6 @@ int main(void)
   MX_USB_HOST_Init();
   MX_X_CUBE_AI_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
