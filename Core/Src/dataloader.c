@@ -8,13 +8,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "dataloader.h"
+#include <aiTestUtility.h>
+
 
 /* Private define ------------------------------------------------------------*/
 #define BASE_WAVE_NAME		"sample.wav"
 #define SIGNAL_LEN			14700
 #define FFT_LEN				1024
 #define FRAME_LEN 			FFT_LEN
-#define AUDIO_BUFFER_SIZE	FFT_LEN
+#define AUDIO_BUFFER_SIZE	2048
 #define HOP_LEN				512U
 #define NUM_MELS			30U
 #define NUM_COLS			27U
@@ -46,11 +48,14 @@ static float32_t aSpectrScratchBuffer[FFT_LEN];
 void ReadWavFile(void)
 {
 	UINT bytesread = 0;
+	volatile UINT byteswriten = 0;
+	volatile uint32_t frame_index = 0;
 	uint32_t AudioRemSize = 0;
-	volatile uint32_t readIndex = 0;
-	int16_t aInSignal[SIGNAL_LEN];
+	int16_t aInWord;
+	float32_t aInFrame[FRAME_LEN];
+	float32_t aColBuffer[NUM_MELS];
 	float32_t aSpectrogram[NUM_MELS * NUM_COLS];
-
+	const uint32_t num_frames = 1 + (SIGNAL_LEN - FRAME_LEN) / HOP_LEN;
 
 	char* wavefilename = BASE_WAVE_NAME;
 
@@ -71,7 +76,8 @@ void ReadWavFile(void)
 	{
 		bytesread = 0;
 		f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
-
+		bytesread /= 2;
+		f_lseek(&File, bytesread);
 		if(AudioRemSize > AUDIO_BUFFER_SIZE)
 		{
 			AudioRemSize -= bytesread;
@@ -81,20 +87,30 @@ void ReadWavFile(void)
 			AudioRemSize = 0;
 		}
 
-		for(int i = 0; i < sizeof(Audio_Buffer); i += 2)
+		for(uint32_t i = 0; i < bytesread/2; i++)
 		{
-			uint32_t aSignalIndex = i/2 + AUDIO_BUFFER_SIZE/4 * readIndex;
-
-		    aInSignal[aSignalIndex] = Audio_Buffer[i] | (Audio_Buffer[i + 1] << 8);
-		    if (aInSignal[aSignalIndex] >= 0x8000) aInSignal[aSignalIndex] -= 0x10000;
+		    aInWord = Audio_Buffer[i * 2] | (Audio_Buffer[i * 2 + 1] << 8);
+		    if (aInWord >= 0x8000) aInWord -= 0x10000;
+		    aInFrame[i] = (float32_t) aInWord / (1 << 15);
 		}
 
-		readIndex++;
+		MelSpectrogramColumn(&S_MelSpectr, aInFrame, aColBuffer);
+
+		for (uint32_t i = 0; i < NUM_MELS; i++)
+		{
+			aSpectrogram[i * num_frames + frame_index] = aColBuffer[i];
+		}
+
+		frame_index++;
+		byteswriten += bytesread/2;
 	}
 	f_close(&File);
 
-	AudioPreprocessing_Run(aInSignal, aSpectrogram, SIGNAL_LEN);
 	PowerTodB(aSpectrogram);
+	for(uint32_t i = 0;i < (NUM_COLS * NUM_MELS); i++)
+	{
+		LC_PRINT("%.4f, ", aSpectrogram[i]);
+	}
 }
 
 
