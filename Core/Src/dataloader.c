@@ -33,11 +33,9 @@ static arm_rfft_fast_instance_f32 S_Rfft;
 static MelFilterTypeDef           S_MelFilter;
 static SpectrogramTypeDef         S_Spectr;
 static MelSpectrogramTypeDef      S_MelSpectr;
-static float32_t aWindowFuncBuffer[FRAME_LEN];
-static float32_t aMelFilterCoefs[NUM_MEL_COEFS];
-static uint32_t aMelFilterStartIndices[NUM_MELS];
-static uint32_t aMelFilterStopIndices[NUM_MELS];
-static float32_t aSpectrScratchBuffer[FFT_LEN];
+static float32_t aSpectrogram[NUM_MELS * NUM_COLS];
+static float32_t aColBuffer[NUM_MELS];
+float32_t aSpectrScratchBuffer[FFT_LEN];
 
 /* Private functions ---------------------------------------------------------*/
 /**
@@ -48,13 +46,12 @@ static float32_t aSpectrScratchBuffer[FFT_LEN];
 void ReadWavFile(void)
 {
 	UINT bytesread = 0;
+	UINT header = 0;
 	volatile UINT byteswriten = 0;
 	volatile uint32_t frame_index = 0;
 	uint32_t AudioRemSize = 0;
 	int16_t aInWord;
 	float32_t aInFrame[FRAME_LEN];
-	float32_t aColBuffer[NUM_MELS];
-	float32_t aSpectrogram[NUM_MELS * NUM_COLS];
 	const uint32_t num_frames = 1 + (SIGNAL_LEN - FRAME_LEN) / HOP_LEN;
 
 	char* wavefilename = BASE_WAVE_NAME;
@@ -68,19 +65,19 @@ void ReadWavFile(void)
 		f_read(&File, &waveformat, sizeof(waveformat), &bytesread);
 	}
 
-	AudioRemSize = waveformat.FileSize - bytesread;
+	header = bytesread;
+	AudioRemSize = waveformat.FileSize - header;
 
 	Preprocessing_Init();
 
 	while(AudioRemSize != 0)
 	{
 		bytesread = 0;
+		f_lseek(&File, header + byteswriten);
 		f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
-		bytesread /= 2;
-		f_lseek(&File, bytesread);
 		if(AudioRemSize > AUDIO_BUFFER_SIZE)
 		{
-			AudioRemSize -= bytesread;
+			AudioRemSize -= bytesread/2;
 		}
 		else
 		{
@@ -109,44 +106,42 @@ void ReadWavFile(void)
 	PowerTodB(aSpectrogram);
 	for(uint32_t i = 0;i < (NUM_COLS * NUM_MELS); i++)
 	{
-		LC_PRINT("%.4f, ", aSpectrogram[i]);
+		LC_PRINT("%.4f,", aSpectrogram[i]);
 	}
 }
 
 
 void Preprocessing_Init(void)
 {
-
-  /* Init window function */
-  if (Window_Init(aWindowFuncBuffer, FRAME_LEN, WINDOW_HANN) != 0)
-  {
-    while(1);
-  }
   /* Init RFFT */
   arm_rfft_fast_init_f32(&S_Rfft, FFT_LEN);
 
-  /* Init Spectrogram */
-  S_Spectr.pRfft    = &S_Rfft;
-  S_Spectr.Type     = SPECTRUM_TYPE_POWER;
-  S_Spectr.pWindow  = aWindowFuncBuffer;
-  S_Spectr.SampRate = waveformat.SampleRate;
-  S_Spectr.FrameLen = FRAME_LEN;
-  S_Spectr.FFTLen   = FFT_LEN;
-  S_Spectr.pScratch = aSpectrScratchBuffer;
 
-  /* Init Mel filter */
-  S_MelFilter.pStartIndices = aMelFilterStartIndices;
-  S_MelFilter.pStopIndices  = aMelFilterStopIndices;
-  S_MelFilter.pCoefficients = aMelFilterCoefs;
-  S_MelFilter.NumMels   = NUM_MELS;
-  S_MelFilter.FFTLen    = FFT_LEN;
-  S_MelFilter.SampRate  = waveformat.SampleRate;
-  S_MelFilter.FMin      = 0.0;
-  S_MelFilter.FMax      = S_MelFilter.SampRate / 2.0;
-  S_MelFilter.Formula   = MEL_SLANEY;
-  S_MelFilter.Normalize = 1;
-  S_MelFilter.Mel2F     = 1;
-  MelFilterbank_Init(&S_MelFilter);
+  /* Init RFFT */
+   arm_rfft_fast_init_f32(&S_Rfft, 1024);
+
+   /* Init Spectrogram */
+   S_Spectr.pRfft    = &S_Rfft;
+   S_Spectr.Type     = SPECTRUM_TYPE_POWER;
+   S_Spectr.pWindow  = (float32_t *) hannWin_1024;;
+   S_Spectr.SampRate = waveformat.SampleRate;
+   S_Spectr.FrameLen = FRAME_LEN;
+   S_Spectr.FFTLen   = FFT_LEN;
+   S_Spectr.pScratch = aSpectrScratchBuffer;
+
+   /* Init Mel filter */
+   S_MelFilter.pStartIndices = (uint32_t *) melFiltersStartIndices_1024_30;
+   S_MelFilter.pStopIndices  = (uint32_t *) melFiltersStopIndices_1024_30;
+   S_MelFilter.pCoefficients = (float32_t *) melFilterLut_1024_30;
+   S_MelFilter.NumMels   = NUM_MELS;
+   S_MelFilter.FFTLen    = FFT_LEN;
+   S_MelFilter.SampRate  = waveformat.SampleRate;
+   S_MelFilter.FMin      = 0.0;
+   S_MelFilter.FMax      = S_MelFilter.SampRate / 2.0;
+   S_MelFilter.Formula   = MEL_SLANEY;
+   S_MelFilter.Normalize = 1;
+   S_MelFilter.Mel2F     = 1;
+   MelFilterbank_Init(&S_MelFilter);
 
   /* Init MelSpectrogram */
   S_MelSpectr.SpectrogramConf = &S_Spectr;
