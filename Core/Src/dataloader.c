@@ -8,8 +8,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "dataloader.h"
+#include "app_x-cube-ai.h"
 #include <aiTestUtility.h>
-
 
 /* Private define ------------------------------------------------------------*/
 #define BASE_WAVE_NAME		"sample.wav"
@@ -33,9 +33,10 @@ static arm_rfft_fast_instance_f32 S_Rfft;
 static MelFilterTypeDef           S_MelFilter;
 static SpectrogramTypeDef         S_Spectr;
 static MelSpectrogramTypeDef      S_MelSpectr;
-static float32_t aSpectrogram[NUM_MELS * NUM_COLS];
 static float32_t aColBuffer[NUM_MELS];
+static float32_t pSpectrogram[NUM_COLS * NUM_MELS];
 float32_t aSpectrScratchBuffer[FFT_LEN];
+
 
 /* Private functions ---------------------------------------------------------*/
 /**
@@ -43,7 +44,7 @@ float32_t aSpectrScratchBuffer[FFT_LEN];
   * @param  None
   * @retval None
   */
-void ReadWavFile(void)
+float32_t* ReadWavFile(void)
 {
 	UINT bytesread = 0;
 	UINT header = 0;
@@ -74,13 +75,15 @@ void ReadWavFile(void)
 	{
 		bytesread = 0;
 		f_lseek(&File, header + byteswriten);
-		f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
+
 		if(AudioRemSize > AUDIO_BUFFER_SIZE)
 		{
+			f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
 			AudioRemSize -= bytesread/2;
 		}
 		else
 		{
+			f_read(&File, &Audio_Buffer[0], AudioRemSize, &bytesread);
 			AudioRemSize = 0;
 		}
 
@@ -95,19 +98,15 @@ void ReadWavFile(void)
 
 		for (uint32_t i = 0; i < NUM_MELS; i++)
 		{
-			aSpectrogram[i * num_frames + frame_index] = aColBuffer[i];
+			pSpectrogram[i * num_frames + frame_index] = aColBuffer[i];
 		}
 
 		frame_index++;
 		byteswriten += bytesread/2;
 	}
 	f_close(&File);
-
-	PowerTodB(aSpectrogram);
-	for(uint32_t i = 0;i < (NUM_COLS * NUM_MELS); i++)
-	{
-		LC_PRINT("%.4f,", aSpectrogram[i]);
-	}
+	PowerTodB(pSpectrogram);
+	return pSpectrogram;
 }
 
 
@@ -146,25 +145,6 @@ void Preprocessing_Init(void)
   /* Init MelSpectrogram */
   S_MelSpectr.SpectrogramConf = &S_Spectr;
   S_MelSpectr.MelFilter       = &S_MelFilter;
-}
-
-void AudioPreprocessing_Run(int16_t *pInSignal, float32_t *pOut, uint32_t signal_len)
-{
-  float32_t aInFrame[FRAME_LEN];
-  float32_t aColBuffer[NUM_MELS];
-
-  const uint32_t num_frames = 1 + (signal_len - FRAME_LEN) / HOP_LEN;
-
-  for (uint32_t frame_index = 0; frame_index < num_frames; frame_index++)
-  {
-    buf_to_float_normed(&pInSignal[HOP_LEN * frame_index], aInFrame, FRAME_LEN);
-    MelSpectrogramColumn(&S_MelSpectr, aInFrame, aColBuffer);
-    /* Reshape column into pOut */
-    for (uint32_t i = 0; i < NUM_MELS; i++)
-    {
-      pOut[i * num_frames + frame_index] = aColBuffer[i];
-    }
-  }
 }
 
 void PowerTodB(float32_t *pSpectrogram)

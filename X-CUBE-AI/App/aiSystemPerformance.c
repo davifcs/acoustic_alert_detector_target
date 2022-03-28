@@ -104,6 +104,7 @@
 
 /* AI x-cube-ai files */
 #include "app_x-cube-ai.h"
+#include "dataloader.h"
 
 
 /* -----------------------------------------------------------------------------
@@ -426,7 +427,7 @@ static int aiTestPerformance(int idx)
   else
     niter = _APP_ITER_;
 
-  LC_PRINT("\r\nRunning PerfTest on \"%s\" with random inputs (%d iterations)...\r\n",
+  LC_PRINT("\r\nRunning PerfTest on \"%s\" (%d iterations)...\r\n",
       net_exec_ctx[idx].report.model_name, niter);
 
 #if APP_DEBUG == 1
@@ -485,26 +486,8 @@ static int aiTestPerformance(int idx)
 
   /* Main inference loop */
   for (iter = 0; iter < niter; iter++) {
-
-    /* Fill input tensors with random data */
     for (int i = 0; i < net_exec_ctx[idx].report.n_inputs; i++) {
-      const ai_buffer_format fmt = AI_BUFFER_FORMAT(&ai_input[i]);
-      ai_i8 *in_data = (ai_i8 *)ai_input[i].data;
-      for (ai_size j = 0; j < AI_BUFFER_SIZE(&ai_input[i]); ++j) {
-        /* uniform distribution between -1.0 and 1.0 */
-        const float v = 2.0f * (ai_float) rand() / (ai_float) RAND_MAX - 1.0f;
-        if  (AI_BUFFER_FMT_GET_TYPE(fmt) == AI_BUFFER_FMT_TYPE_FLOAT) {
-          *(ai_float *)(in_data + j * 4) = v;
-        }
-        else {
-          if (AI_BUFFER_FMT_GET_BITS(fmt) >= 8) {
-            in_data[j] = (ai_i8)(v * 127);
-            if (AI_BUFFER_FMT_GET_TYPE(fmt) == AI_BUFFER_FMT_TYPE_BOOL) {
-              in_data[j] = (in_data[j] > 0)?(ai_i8)1:(ai_i8)0;
-            }
-          }
-        }
-      }
+	   ai_input[i].data = ReadWavFile();
     }
 
     MON_ALLOC_ENABLE();
@@ -513,6 +496,7 @@ static int aiTestPerformance(int idx)
 
     cyclesCounterStart();
     batch = ai_mnetwork_run(net_exec_ctx[idx].handle, ai_input, ai_output);
+//    LC_PRINT("%.2f %d\r\n", *(ai_float*)ai_output[0].data, *(ai_bool*)ai_output[1].data);
     if (batch != 1) {
       aiLogErr(ai_mnetwork_get_error(net_exec_ctx[idx].handle),
           "ai_mnetwork_run");

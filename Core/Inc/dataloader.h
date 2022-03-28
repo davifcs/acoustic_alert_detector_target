@@ -44,9 +44,8 @@ typedef struct
 
 
 /* Exported functions ------------------------------------------------------- */
-void ReadWavFile(void);
+float32_t* ReadWavFile(void);
 void Preprocessing_Init(void);
-void AudioPreprocessing_Run(int16_t *pInSignal, float32_t *pOut, uint32_t signal_len);
 void PowerTodB(float32_t *pSpectrogram);
 
 

@@ -21,7 +21,6 @@
 #include "fatfs.h"
 #include "app_x-cube-ai.h"
 #include "usb_host.h"
-#include "dataloader.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -43,8 +42,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
- CRC_HandleTypeDef hcrc;
-
+CRC_HandleTypeDef hcrc;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -111,7 +109,6 @@ int main(void)
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
-//  MX_X_CUBE_AI_Process();
     /* USER CODE BEGIN 3 */
     switch(Appli_state)
       {
@@ -126,13 +123,14 @@ int main(void)
       case APPLICATION_READY:
       	if(HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET)
       	{
-      		ReadWavFile();
+			MX_X_CUBE_AI_Process();
       	}
       	break;
       case APPLICATION_DISCONNECT:
       	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
       	break;
       }
+
   }
   /* USER CODE END 3 */
 }
