@@ -12,7 +12,8 @@
 #include <aiTestUtility.h>
 
 /* Private define ------------------------------------------------------------*/
-#define BASE_WAVE_NAME		"sample.wav"
+#define BASE_WAVE_NAME		"sample"
+#define FILE_EXTENSION		".wav"
 #define SIGNAL_LEN			14700
 #define FFT_LEN				1024
 #define FRAME_LEN 			FFT_LEN
@@ -44,7 +45,7 @@ float32_t aSpectrScratchBuffer[FFT_LEN];
   * @param  None
   * @retval None
   */
-float32_t* ReadWavFile(void)
+float32_t* ReadWavFile(uint16_t file_index)
 {
 	UINT bytesread = 0;
 	UINT header = 0;
@@ -54,12 +55,19 @@ float32_t* ReadWavFile(void)
 	int16_t aInWord;
 	float32_t aInFrame[FRAME_LEN];
 	const uint32_t num_frames = 1 + (SIGNAL_LEN - FRAME_LEN) / HOP_LEN;
+	uint16_t index_len = 0;
+	uint16_t n = file_index;
 
-	char* wavefilename = BASE_WAVE_NAME;
+	do{n /= 10; ++ index_len;} while (n != 0);
+	char wavefilename[sizeof(BASE_WAVE_NAME) + index_len];
+	sprintf(wavefilename, "%s%u%s", BASE_WAVE_NAME, file_index, FILE_EXTENSION);
 
 	if(f_open(&File, wavefilename, FA_READ) != FR_OK)
 	{
-		//TODO Handle Error
+		for(;;)
+		{
+			//TODO Handle Error
+		}
 	}
 	else
 	{

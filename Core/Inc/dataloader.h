@@ -44,7 +44,7 @@ typedef struct
 
 
 /* Exported functions ------------------------------------------------------- */
-float32_t* ReadWavFile(void);
+float32_t* ReadWavFile(uint16_t file_index);
 void Preprocessing_Init(void);
 void PowerTodB(float32_t *pSpectrogram);
 

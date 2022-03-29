@@ -487,7 +487,7 @@ static int aiTestPerformance(int idx)
   /* Main inference loop */
   for (iter = 0; iter < niter; iter++) {
     for (int i = 0; i < net_exec_ctx[idx].report.n_inputs; i++) {
-	   ai_input[i].data = ReadWavFile();
+	   ai_input[i].data = ReadWavFile(iter);
     }
 
     MON_ALLOC_ENABLE();
@@ -496,7 +496,7 @@ static int aiTestPerformance(int idx)
 
     cyclesCounterStart();
     batch = ai_mnetwork_run(net_exec_ctx[idx].handle, ai_input, ai_output);
-//    LC_PRINT("%.2f %d\r\n", *(ai_float*)ai_output[0].data, *(ai_bool*)ai_output[1].data);
+
     if (batch != 1) {
       aiLogErr(ai_mnetwork_get_error(net_exec_ctx[idx].handle),
           "ai_mnetwork_run");
