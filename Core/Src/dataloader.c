@@ -79,21 +79,12 @@ float32_t* ReadWavFile(uint16_t file_index)
 
 	Preprocessing_Init();
 
-	while(AudioRemSize != 0)
+	while(AudioRemSize >= AUDIO_BUFFER_SIZE)
 	{
 		bytesread = 0;
 		f_lseek(&File, header + byteswriten);
-
-		if(AudioRemSize > AUDIO_BUFFER_SIZE)
-		{
-			f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
-			AudioRemSize -= bytesread/2;
-		}
-		else
-		{
-			f_read(&File, &Audio_Buffer[0], AudioRemSize, &bytesread);
-			AudioRemSize = 0;
-		}
+		f_read(&File, &Audio_Buffer[0], AUDIO_BUFFER_SIZE, &bytesread);
+		AudioRemSize -= bytesread/2;
 
 		for(uint32_t i = 0; i < bytesread/2; i++)
 		{
@@ -122,10 +113,6 @@ void Preprocessing_Init(void)
 {
   /* Init RFFT */
   arm_rfft_fast_init_f32(&S_Rfft, FFT_LEN);
-
-
-  /* Init RFFT */
-   arm_rfft_fast_init_f32(&S_Rfft, 1024);
 
    /* Init Spectrogram */
    S_Spectr.pRfft    = &S_Rfft;
