@@ -79,7 +79,7 @@ float32_t* ReadWavFile(uint16_t file_index)
 
 	Preprocessing_Init();
 
-	while(AudioRemSize >= AUDIO_BUFFER_SIZE)
+	while(AudioRemSize > AUDIO_BUFFER_SIZE)
 	{
 		bytesread = 0;
 		f_lseek(&File, header + byteswriten);
